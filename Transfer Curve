@@ -1,0 +1,44 @@
+/*
+  ESP32 DAC Voltage Output
+  Steps through preset output voltages
+*/
+// Define DAC pins
+#define DAC_CH1 26
+#define DAC_CH2 25
+ 
+void setup() {
+  // Setup Serial Monitor
+  Serial.begin(115200);
+}
+ 
+void loop() {
+ 
+  // Step through voltages, delay between levels
+  for(int i=0;i<255;i++){
+    dacWrite(DAC_CH1,i);
+    Serial.print("DAC Value ");
+    Serial.println(i);
+    delay(20);
+  }
+  
+  // dacWrite(DAC_CH1, 0);
+  // Serial.println("DAC Value 0");
+  // delay(3000);
+ 
+  // dacWrite(DAC_CH1, 64);
+  // Serial.println("DAC Value 64");
+  // delay(3000);
+ 
+  // dacWrite(DAC_CH1, 128);
+  // Serial.println("DAC Value 128");
+  // delay(3000);
+ 
+  // dacWrite(DAC_CH1, 192);
+  // Serial.println("DAC Value 192");
+  // delay(3000);
+ 
+  // dacWrite(DAC_CH1, 255);
+  // Serial.println("DAC Value 255");
+  // delay(3000);
+  
+}
