@@ -1,0 +1,103 @@
+/*
+  Counts and records pulses output from MightyOhm Geiger counter.
+  Calculates counts per second, minute, and hour (CPS,CPM,and CPH) based on tracking output from
+  millis().
+*/  
+// #include 
+// nInterrupt=0 is for digital pin 2, 1 is for pin 3
+const int SDpin=10, nInterrupt=0, interruptPin=2; 
+volatile int knt=0, counter=0;
+long unsigned int millis_start,M;
+int i=1;
+// File logfile;
+char filename[]="GEIGER1.CSV";
+void setup() {
+  Serial.begin(9600);
+  // if (!SD.begin(SDpin)) {Serial.println("Card failed."); 
+  //   delay(50);exit(0);
+  // }
+  // logfile = SD.open(filename, FILE_WRITE); 
+  // if (!logfile) {
+  //   Serial.println("Couldn't create file."); delay(50); exit(0);
+  // }  
+  // Serial.print("Logging to file "); Serial.println(filename);       
+  pinMode(interruptPin,INPUT_PULLUP); // built-in resistor.
+  attachInterrupt(nInterrupt,isr,RISING); // Start watching.
+  millis_start=millis();  
+  Serial.print("Starting to run now\n\n");
+}
+void loop() {
+  double sec = (double(M-millis_start))/1000;
+  double min = (double(M-millis_start))/60000;
+  double hour = (double(M-millis_start))/3600000;
+  double avg_s = knt/sec;
+  double avg_m = knt/min;
+  double avg_h = knt/hour;
+
+  if (counter!=knt && (M-millis_start)>(60000L*i)){
+      Serial.print("\nRunning time is "); Serial.print(sec,2); Serial.print(" seconds");
+      Serial.print("\nRunning time in minutes is "); Serial.print(min,3); Serial.print(" minutes");
+      Serial.print("\nRunning time in hours is "); Serial.print(hour,4); Serial.print(" hours");
+      Serial.print("\nCounts is "); Serial.print(knt);
+      // Serial.print(M); Serial.print(' ');Serial.println(knt);
+      Serial.print("\nRunning average CPS is ");
+      Serial.print(avg_s,2);
+      Serial.print("\nRunning average CPM is ");
+      Serial.print(avg_m,3);
+      Serial.print("\nRunning average CPH is ");
+      Serial.print(avg_h,4);
+      Serial.print("\n");
+      counter++;
+      i++;
+    // Serial.print("CNT/min = "); 
+    // Serial.println(knt);
+    //logfile.print(knt); 
+    // logfile.println(knt); // counts per minute
+    // knt=0; millis_start=M;
+  }
+}
+void isr() { // interrupt service routine
+  counter = knt;
+  knt++; M=millis();
+  // float sec = (float(M-millis_start))/1000;
+  // float min = (float(M-millis_start))/60000;
+  // float hour = (float(M-millis_start))/360000;
+  // float avg_s = knt/sec;
+  // float avg_m = knt/min;
+  // float avg_h = knt/hour;
+  // Serial.print("\nRunning time is "); Serial.print(sec); Serial.print(" seconds");
+  // Serial.print("\nRunning time in minutes is "); Serial.print(min); Serial.print(" minutes");
+  // Serial.print("\nRunning time in hours is "); Serial.print(hour); Serial.print(" hours");
+  // Serial.print("\nCounts is "); Serial.print(knt);
+  // // Serial.print(M); Serial.print(' ');Serial.println(knt);
+  // Serial.print("\nRunning average CPS is ");
+  // Serial.print(avg_s);
+  // Serial.print("\nRunning average CPM is ");
+  // Serial.print(avg_m);
+  // Serial.print("\nRunning average CPH is ");
+  // Serial.print(avg_h);
+  // Serial.print("\n");
+  // logfile.print(M); logfile.print(',');
+  // logfile.print(knt);
+  // if ((M-millis_start)>60000L) {
+  //   Serial.print("\nRunning time is "); Serial.print(sec); Serial.print(" seconds");
+  //   Serial.print("\nRunning time in minutes is "); Serial.print(min); Serial.print(" minutes");
+  //   Serial.print("\nRunning time in hours is "); Serial.print(hour); Serial.print(" hours");
+  //   Serial.print("\nCounts is "); Serial.print(knt);
+  //   // Serial.print(M); Serial.print(' ');Serial.println(knt);
+  //   Serial.print("\nRunning average CPS is ");
+  //   Serial.print(avg_s);
+  //   Serial.print("\nRunning average CPM is ");
+  //   Serial.print(avg_m);
+  //   Serial.print("\nRunning average CPH is ");
+  //   Serial.print(avg_h);
+  //   Serial.print("\n");
+  //   // Serial.print("CNT/min = "); 
+  //   // Serial.println(knt);
+  //   //logfile.print(knt); 
+  //   // logfile.println(knt); // counts per minute
+  //   // knt=0; millis_start=M;
+  // }
+  //logfile.println();
+  // logfile.flush();
+}
