@@ -258,12 +258,25 @@ void loop(){
       current_mA = ina219.getCurrent_mA()/10;
       power_mW = ina219.getPower_mW();
       loadvoltage = busvoltage + (shuntvoltage / 1000);
-      char stri = i;
-      char strj = j;
-      char strshunt = shuntvoltage;
-      char strbus = busvoltage;
-      char strcurrent = current_mA;
-      char strload = loadvoltage;
+      char buffer[20]; // Create a buffer to store the converted strings
+      snprintf(buffer, sizeof(buffer), "%d", i);
+      char* stri = buffer;
+      snprintf(buffer, sizeof(buffer), "%d", j);
+      char* strj = buffer;
+      snprintf(buffer, sizeof(buffer), "%.2f", shuntvoltage);
+      char* strshunt = buffer;
+      snprintf(buffer, sizeof(buffer), "%.2f", busvoltage);
+      char* strbus = buffer;
+      snprintf(buffer, sizeof(buffer), "%.2f", current_mA);
+      char* strcurrent = buffer;
+      snprintf(buffer, sizeof(buffer), "%.2f", loadvoltage);
+      char* strload = buffer;
+      // const char* stri = i;
+      // const char* strj = j;
+      // const char* strshunt = shuntvoltage;
+      // const char* strbus = busvoltage;
+      // const char* strcurrent = current_mA;
+      // const char* strload = loadvoltage;
 
       mcp.setChannelValue(MCP4728_CHANNEL_D,i);
       Serial.print("DAC Value Vg ");
@@ -280,14 +293,15 @@ void loop(){
       // Serial.print("Power:         "); Serial.print(power_mW); Serial.println(" mW");
       Serial.println("\n");
       delay(200);
-      writeFile(SD, "/Test.txt", "Vg DAC:  ");appendFile(SD, "/Test.txt", stri);
-      writeFile(SD, "/Test.txt", "Vd DAC:  ");appendFile(SD, "/Test.txt", strj);
-      writeFile(SD, "/Test.txt", "Bus Voltage:   ");appendFile(SD, "/Test.txt", strbus);appendFile(SD, "/Test.txt", " V");
-      writeFile(SD, "/Test.txt", "Shunt Voltage:   ");appendFile(SD, "/Test.txt", strshunt);appendFile(SD, "/Test.txt", " V");
-      writeFile(SD, "/Test.txt", "Load Voltage:   ");appendFile(SD, "/Test.txt", strload);appendFile(SD, "/Test.txt", " V");
-      writeFile(SD, "/Test.txt", "Current:   ");appendFile(SD, "/Test.txt", strcurrent);appendFile(SD, "/Test.txt", " mA");
+      appendFile(SD, "/Test.txt", "Vg DAC:  ");appendFile(SD, "/Test.txt", stri);appendFile(SD, "/Test.txt", "\n");
+      appendFile(SD, "/Test.txt", "Vd DAC:  ");appendFile(SD, "/Test.txt", strj);appendFile(SD, "/Test.txt", "\n");
+      appendFile(SD, "/Test.txt", "Bus Voltage:   ");appendFile(SD, "/Test.txt", strbus);appendFile(SD, "/Test.txt", " V");appendFile(SD, "/Test.txt", "\n");
+      appendFile(SD, "/Test.txt", "Shunt Voltage:   ");appendFile(SD, "/Test.txt", strshunt);appendFile(SD, "/Test.txt", " V");appendFile(SD, "/Test.txt", "\n");
+      appendFile(SD, "/Test.txt", "Load Voltage:   ");appendFile(SD, "/Test.txt", strload);appendFile(SD, "/Test.txt", " V");appendFile(SD, "/Test.txt", "\n");
+      appendFile(SD, "/Test.txt", "Current:   ");appendFile(SD, "/Test.txt", strcurrent);appendFile(SD, "/Test.txt", " mA");appendFile(SD, "/Test.txt", "\n");
+      appendFile(SD, "/Test.txt", "\n\n");
       // appendFile(SD, "/Test.txt", ");
-      readFile(SD, "/Test.txt");
+      // readFile(SD, "/Test.txt");
     }
     delay(5000);
     Serial.printf("Total space: %lluMB\n", SD.totalBytes() / (1024 * 1024));
