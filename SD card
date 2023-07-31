@@ -1,0 +1,296 @@
+/*
+  Rui Santos
+  Complete project details at https://RandomNerdTutorials.com/esp32-microsd-card-arduino/
+  
+  This sketch can be found at: Examples > SD(esp32) > SD_Test
+*/
+
+#include <Arduino.h>
+#include <Wire.h>
+#include <Adafruit_INA219.h>
+#include <Adafruit_MCP4728.h>
+
+Adafruit_INA219 ina219;
+Adafruit_MCP4728 mcp;
+#define DAC_CH1 26
+#define DAC_CH2 25
+
+#include "FS.h"
+#include "SD.h"
+#include "SPI.h"
+
+void listDir(fs::FS &fs, const char * dirname, uint8_t levels){
+  Serial.printf("Listing directory: %s\n", dirname);
+
+  File root = fs.open(dirname);
+  if(!root){
+    Serial.println("Failed to open directory");
+    return;
+  }
+  if(!root.isDirectory()){
+    Serial.println("Not a directory");
+    return;
+  }
+
+  File file = root.openNextFile();
+  while(file){
+    if(file.isDirectory()){
+      Serial.print("  DIR : ");
+      Serial.println(file.name());
+      if(levels){
+        listDir(fs, file.name(), levels -1);
+      }
+    } else {
+      Serial.print("  FILE: ");
+      Serial.print(file.name());
+      Serial.print("  SIZE: ");
+      Serial.println(file.size());
+    }
+    file = root.openNextFile();
+  }
+}
+
+void createDir(fs::FS &fs, const char * path){
+  Serial.printf("Creating Dir: %s\n", path);
+  if(fs.mkdir(path)){
+    Serial.println("Dir created");
+  } else {
+    Serial.println("mkdir failed");
+  }
+}
+
+void removeDir(fs::FS &fs, const char * path){
+  Serial.printf("Removing Dir: %s\n", path);
+  if(fs.rmdir(path)){
+    Serial.println("Dir removed");
+  } else {
+    Serial.println("rmdir failed");
+  }
+}
+
+void readFile(fs::FS &fs, const char * path){
+  Serial.printf("Reading file: %s\n", path);
+
+  File file = fs.open(path);
+  if(!file){
+    Serial.println("Failed to open file for reading");
+    return;
+  }
+
+  Serial.print("Read from file: ");
+  while(file.available()){
+    Serial.write(file.read());
+  }
+  file.close();
+}
+
+void writeFile(fs::FS &fs, const char * path, const char * message){
+  Serial.printf("Writing file: %s\n", path);
+
+  File file = fs.open(path, FILE_WRITE);
+  if(!file){
+    Serial.println("Failed to open file for writing");
+    return;
+  }
+  if(file.print(message)){
+    Serial.println("File written");
+  } else {
+    Serial.println("Write failed");
+  }
+  file.close();
+}
+
+void appendFile(fs::FS &fs, const char * path, const char * message){
+  Serial.printf("Appending to file: %s\n", path);
+
+  File file = fs.open(path, FILE_APPEND);
+  if(!file){
+    Serial.println("Failed to open file for appending");
+    return;
+  }
+  if(file.print(message)){
+      Serial.println("Message appended");
+  } else {
+    Serial.println("Append failed");
+  }
+  file.close();
+}
+
+void renameFile(fs::FS &fs, const char * path1, const char * path2){
+  Serial.printf("Renaming file %s to %s\n", path1, path2);
+  if (fs.rename(path1, path2)) {
+    Serial.println("File renamed");
+  } else {
+    Serial.println("Rename failed");
+  }
+}
+
+void deleteFile(fs::FS &fs, const char * path){
+  Serial.printf("Deleting file: %s\n", path);
+  if(fs.remove(path)){
+    Serial.println("File deleted");
+  } else {
+    Serial.println("Delete failed");
+  }
+}
+
+void testFileIO(fs::FS &fs, const char * path){
+  File file = fs.open(path);
+  static uint8_t buf[512];
+  size_t len = 0;
+  uint32_t start = millis();
+  uint32_t end = start;
+  if(file){
+    len = file.size();
+    size_t flen = len;
+    start = millis();
+    while(len){
+      size_t toRead = len;
+      if(toRead > 512){
+        toRead = 512;
+      }
+      file.read(buf, toRead);
+      len -= toRead;
+    }
+    end = millis() - start;
+    Serial.printf("%u bytes read for %u ms\n", flen, end);
+    file.close();
+  } else {
+    Serial.println("Failed to open file for reading");
+  }
+
+
+  file = fs.open(path, FILE_WRITE);
+  if(!file){
+    Serial.println("Failed to open file for writing");
+    return;
+  }
+
+  size_t i;
+  start = millis();
+  for(i=0; i<2048; i++){
+    file.write(buf, 512);
+  }
+  end = millis() - start;
+  Serial.printf("%u bytes written for %u ms\n", 2048 * 512, end);
+  file.close();
+}
+
+void setup(){
+  Serial.begin(115200);
+  if(!SD.begin(5)){
+    Serial.println("Card Mount Failed");
+    return;
+  }
+  uint8_t cardType = SD.cardType();
+  if(cardType == CARD_NONE){
+    Serial.println("No SD card attached");
+    return;
+  }
+  
+  Serial.println("Hello!");
+  Serial.println("Adafruit MCP4728 test!");
+  Serial.println("Adafruit INA219 test!");
+
+  if (! ina219.begin()) {
+    Serial.println("Failed to find INA219 chip");
+    while (1) { delay(10); }
+  }
+
+  ina219.setCalibration_16V_400mA();
+
+  if (!mcp.begin()){
+
+    Serial.println("Failed to find MCP4728 chip");
+    while (1) {
+      delay(10);
+    }
+  }
+  mcp.setChannelValue(MCP4728_CHANNEL_A, 4095);
+  mcp.setChannelValue(MCP4728_CHANNEL_B, 2048);
+  mcp.setChannelValue(MCP4728_CHANNEL_C, 1024);
+  mcp.setChannelValue(MCP4728_CHANNEL_D, 0);
+  Serial.print("SD Card Type: ");
+  if(cardType == CARD_MMC){
+    Serial.println("MMC");
+  } else if(cardType == CARD_SD){
+    Serial.println("SDSC");
+  } else if(cardType == CARD_SDHC){
+    Serial.println("SDHC");
+  } else {
+    Serial.println("UNKNOWN");
+  }
+
+  uint64_t cardSize = SD.cardSize() / (1024 * 1024);
+  Serial.printf("SD Card Size: %lluMB\n", cardSize);
+
+  // listDir(SD, "/", 0);
+  // createDir(SD, "/mydir");
+  // listDir(SD, "/", 0);
+  // removeDir(SD, "/mydir");
+  // listDir(SD, "/", 2);
+  // writeFile(SD, "/hello.txt", "Hello ");
+  // appendFile(SD, "/hello.txt", "World!\n");
+  // readFile(SD, "/hello.txt");
+  // deleteFile(SD, "/foo.txt");
+  // renameFile(SD, "/hello.txt", "/foo.txt");
+  // readFile(SD, "/foo.txt");
+  // testFileIO(SD, "/test.txt");
+  // Serial.printf("Total space: %lluMB\n", SD.totalBytes() / (1024 * 1024));
+  // Serial.printf("Used space: %lluMB\n", SD.usedBytes() / (1024 * 1024));
+}
+
+void loop(){
+  // put your main code here, to run repeatedly:
+  float shuntvoltage = 0;
+  float busvoltage = 0;
+  float current_mA = 0;
+  float loadvoltage = 0;
+  float power_mW = 0;
+  writeFile(SD, "/Test.txt", "Getting Sweep and Step Data\n\n");
+
+
+  for(int j=0;j<4096;j+=50){//steps up Vd after each transfer curve
+    mcp.setChannelValue(MCP4728_CHANNEL_C,j);
+    for(int i=0;i<4096;i+=100){ //sweeps Vg from -8 to 3V
+      shuntvoltage = ina219.getShuntVoltage_mV();
+      busvoltage = ina219.getBusVoltage_V();
+      current_mA = ina219.getCurrent_mA()/10;
+      power_mW = ina219.getPower_mW();
+      loadvoltage = busvoltage + (shuntvoltage / 1000);
+      char stri = i;
+      char strj = j;
+      char strshunt = shuntvoltage;
+      char strbus = busvoltage;
+      char strcurrent = current_mA;
+      char strload = loadvoltage;
+
+      mcp.setChannelValue(MCP4728_CHANNEL_D,i);
+      Serial.print("DAC Value Vg ");
+      Serial.println(i);
+      // Serial.print("\n");
+      Serial.print("DAC Value Vd ");
+      Serial.println(j);
+      // Serial.print("\n");
+      // delay(20);
+      Serial.print("Bus Voltage:   "); Serial.print(busvoltage); Serial.println(" V");
+      Serial.print("Shunt Voltage: "); Serial.print(shuntvoltage); Serial.println(" mV");
+      Serial.print("Load Voltage:  "); Serial.print(loadvoltage); Serial.println(" V");
+      Serial.print("Current:       "); Serial.print(current_mA,4); Serial.println(" mA");
+      // Serial.print("Power:         "); Serial.print(power_mW); Serial.println(" mW");
+      Serial.println("\n");
+      delay(200);
+      writeFile(SD, "/Test.txt", "Vg DAC:  ");appendFile(SD, "/Test.txt", stri);
+      writeFile(SD, "/Test.txt", "Vd DAC:  ");appendFile(SD, "/Test.txt", strj);
+      writeFile(SD, "/Test.txt", "Bus Voltage:   ");appendFile(SD, "/Test.txt", strbus);appendFile(SD, "/Test.txt", " V");
+      writeFile(SD, "/Test.txt", "Shunt Voltage:   ");appendFile(SD, "/Test.txt", strshunt);appendFile(SD, "/Test.txt", " V");
+      writeFile(SD, "/Test.txt", "Load Voltage:   ");appendFile(SD, "/Test.txt", strload);appendFile(SD, "/Test.txt", " V");
+      writeFile(SD, "/Test.txt", "Current:   ");appendFile(SD, "/Test.txt", strcurrent);appendFile(SD, "/Test.txt", " mA");
+      // appendFile(SD, "/Test.txt", ");
+      readFile(SD, "/Test.txt");
+    }
+    delay(5000);
+    Serial.printf("Total space: %lluMB\n", SD.totalBytes() / (1024 * 1024));
+    Serial.printf("Used space: %lluMB\n", SD.usedBytes() / (1024 * 1024));
+  }
+}
