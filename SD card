@@ -241,13 +241,14 @@ void setup(){
 }
 
 void loop(){
+
   // put your main code here, to run repeatedly:
   float shuntvoltage = 0;
   float busvoltage = 0;
   float current_mA = 0;
   float loadvoltage = 0;
   float power_mW = 0;
-  writeFile(SD, "/Test.txt", "Getting Sweep and Step Data\n\n");
+  writeFile(SD, "/GaN Data.csv", "Vg DAC, Vd DAC, Shunt Voltage, Bus Voltage, Current, Load Voltage\n");
 
 
   for(int j=0;j<4096;j+=50){//steps up Vd after each transfer curve
@@ -258,19 +259,31 @@ void loop(){
       current_mA = ina219.getCurrent_mA()/10;
       power_mW = ina219.getPower_mW();
       loadvoltage = busvoltage + (shuntvoltage / 1000);
-      char buffer[20]; // Create a buffer to store the converted strings
-      snprintf(buffer, sizeof(buffer), "%d", i);
-      char* stri = buffer;
-      snprintf(buffer, sizeof(buffer), "%d", j);
-      char* strj = buffer;
-      snprintf(buffer, sizeof(buffer), "%.2f", shuntvoltage);
-      char* strshunt = buffer;
-      snprintf(buffer, sizeof(buffer), "%.2f", busvoltage);
-      char* strbus = buffer;
-      snprintf(buffer, sizeof(buffer), "%.2f", current_mA);
-      char* strcurrent = buffer;
-      snprintf(buffer, sizeof(buffer), "%.2f", loadvoltage);
-      char* strload = buffer;
+      // char buffer[50]; // Create a buffer to store the converted strings
+      // snprintf(buffer, sizeof(buffer), "%d,%d,%.2f,%.2f,%.2f,%.2f\n", i, j, shuntvoltage, busvoltage, current_mA, loadvoltage);
+      // appendFile(SD, "/data.csv", buffer);
+      File dataFile = SD.open("/GaN Data.csv", FILE_APPEND);
+      if (dataFile) {
+        char buffer[100];// Format the data as a CSV row
+        snprintf(buffer, sizeof(buffer), "%d,%d,%.2f,%.2f,%.4f,%.2f\n", i, j, shuntvoltage, busvoltage, current_mA, loadvoltage);
+        dataFile.print(buffer);// Write the data to the file
+        dataFile.close();// Close the file
+      } else {
+        Serial.println("Error opening /data.csv");
+      }
+      // char buffer[20]; // Create a buffer to store the converted strings
+      // snprintf(buffer, sizeof(buffer), "%d", i);
+      // char* stri = buffer;
+      // snprintf(buffer, sizeof(buffer), "%d", j);
+      // char* strj = buffer;
+      // snprintf(buffer, sizeof(buffer), "%.2f", shuntvoltage);
+      // char* strshunt = buffer;
+      // snprintf(buffer, sizeof(buffer), "%.2f", busvoltage);
+      // char* strbus = buffer;
+      // snprintf(buffer, sizeof(buffer), "%.2f", current_mA);
+      // char* strcurrent = buffer;
+      // snprintf(buffer, sizeof(buffer), "%.2f", loadvoltage);
+      // char* strload = buffer;
       // const char* stri = i;
       // const char* strj = j;
       // const char* strshunt = shuntvoltage;
@@ -293,13 +306,14 @@ void loop(){
       // Serial.print("Power:         "); Serial.print(power_mW); Serial.println(" mW");
       Serial.println("\n");
       delay(200);
-      appendFile(SD, "/Test.txt", "Vg DAC:  ");appendFile(SD, "/Test.txt", stri);appendFile(SD, "/Test.txt", "\n");
-      appendFile(SD, "/Test.txt", "Vd DAC:  ");appendFile(SD, "/Test.txt", strj);appendFile(SD, "/Test.txt", "\n");
-      appendFile(SD, "/Test.txt", "Bus Voltage:   ");appendFile(SD, "/Test.txt", strbus);appendFile(SD, "/Test.txt", " V");appendFile(SD, "/Test.txt", "\n");
-      appendFile(SD, "/Test.txt", "Shunt Voltage:   ");appendFile(SD, "/Test.txt", strshunt);appendFile(SD, "/Test.txt", " V");appendFile(SD, "/Test.txt", "\n");
-      appendFile(SD, "/Test.txt", "Load Voltage:   ");appendFile(SD, "/Test.txt", strload);appendFile(SD, "/Test.txt", " V");appendFile(SD, "/Test.txt", "\n");
-      appendFile(SD, "/Test.txt", "Current:   ");appendFile(SD, "/Test.txt", strcurrent);appendFile(SD, "/Test.txt", " mA");appendFile(SD, "/Test.txt", "\n");
-      appendFile(SD, "/Test.txt", "\n\n");
+      
+      // appendFile(SD, "/GaN Data.csv", "Vg DAC:  ");appendFile(SD, "/GaN Data.csv", stri);appendFile(SD, "/GaN Data.csv", "\n");
+      // appendFile(SD, "/GaN Data.csv", "Vd DAC:  ");appendFile(SD, "/GaN Data.csv", strj);appendFile(SD, "/GaN Data.csv", "\n");
+      // appendFile(SD, "/GaN Data.csv", "Bus Voltage:   ");appendFile(SD, "/GaN Data.csv", strbus);appendFile(SD, "/GaN Data.csv", " V");appendFile(SD, "/GaN Data.csv", "\n");
+      // appendFile(SD, "/GaN Data.csv", "Shunt Voltage:   ");appendFile(SD, "/GaN Data.csv", strshunt);appendFile(SD, "/GaN Data.csv", " V");appendFile(SD, "/GaN Data.csv", "\n");
+      // appendFile(SD, "/GaN Data.csv", "Load Voltage:   ");appendFile(SD, "/GaN Data.csv", strload);appendFile(SD, "/GaN Data.csv", " V");appendFile(SD, "/GaN Data.csv", "\n");
+      // appendFile(SD, "/GaN Data.csv", "Current:   ");appendFile(SD, "/GaN Data.csv", strcurrent);appendFile(SD, "/GaN Data.csv", " mA");appendFile(SD, "/GaN Data.csv", "\n");
+      // appendFile(SD, "/GaN Data.csv", "\n\n");
       // appendFile(SD, "/Test.txt", ");
       // readFile(SD, "/Test.txt");
     }
