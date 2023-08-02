@@ -266,6 +266,23 @@ void setup(){
 }
 
 void loop(){
+  GPS_Data();
+  buttonState = digitalRead(buttonPin);
+  if(buttonState == HIGH){
+    MeasureAndRecordData();
+    // button15 = HIGH;
+    // button2 = LOW;
+    // writeFile(SD, "/GaN Data.csv", "First Current Sensor\n");
+    // MeasureAndRecordData();
+    // writeFile(SD, "/GaN Data.csv", "Second Current Sensor\n");
+    // delay(1000);
+    // Serial.print("The first current sensor has recorded, now going to the second");
+    // button15 = LOW;
+    // button2 = HIGH;
+    // MeasureAndRecordData();
+  }
+}
+void GPS_Data(){
   char c = GPS.read();
   // if you want to debug, this is a good time to do it!
   if (GPSECHO)
@@ -317,22 +334,6 @@ void loop(){
   Serial.print("The countdown to run the curves has started");
   delay(30000);
   MeasureAndRecordData();
-  }
-  buttonState = digitalRead(buttonPin);
-  if(buttonState == HIGH){
-    MeasureAndRecordData();
-
-
-    // button15 = HIGH;
-    // button2 = LOW;
-    // writeFile(SD, "/GaN Data.csv", "First Current Sensor\n");
-    // MeasureAndRecordData();
-    // writeFile(SD, "/GaN Data.csv", "Second Current Sensor\n");
-    // delay(1000);
-    // Serial.print("The first current sensor has recorded, now going to the second");
-    // button15 = LOW;
-    // button2 = HIGH;
-    // MeasureAndRecordData();
   }
 }
 void MeasureAndRecordData(){
