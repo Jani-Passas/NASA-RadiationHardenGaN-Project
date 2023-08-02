@@ -1,10 +1,3 @@
-/*
-  Rui Santos
-  Complete project details at https://RandomNerdTutorials.com/esp32-microsd-card-arduino/
-  
-  This sketch can be found at: Examples > SD(esp32) > SD_Test
-*/
-
 #include <Arduino.h>
 #include <Wire.h>
 #include <Adafruit_INA219.h>
@@ -18,17 +11,6 @@ Adafruit_MCP4728 mcp;
 #include "FS.h"
 #include "SD.h"
 #include "SPI.h"
-
-#include <Adafruit_GPS.h>
-Adafruit_GPS GPS(&Wire);
-#define GPSECHO false
-uint32_t timer = millis();
-
-const int button2 = 2;
-const int button15 = 15;
-const int buttonPin = 4;
-int buttonState = 0;
-int run_counter = 1;
 
 void listDir(fs::FS &fs, const char * dirname, uint8_t levels){
   Serial.printf("Listing directory: %s\n", dirname);
@@ -193,15 +175,7 @@ void setup(){
     Serial.println("Card Mount Failed");
     return;
   }
-  GPS.begin(0x10);
-  GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA); 
-  GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ); // 1 Hz update rate
-  GPS.sendCommand(PGCMD_ANTENNA);
-  delay(1000);
-  GPS.println(PMTK_Q_RELEASE);
-
-  ina219.begin();
-  mcp.begin(0x60);
+  delay(100);
   uint8_t cardType = SD.cardType();
   if(cardType == CARD_NONE){
     Serial.println("No SD card attached");
@@ -212,7 +186,7 @@ void setup(){
   Serial.println("Adafruit MCP4728 test!");
   Serial.println("Adafruit INA219 test!");
 
-  if (!ina219.begin()) {
+  if (! ina219.begin()) {
     Serial.println("Failed to find INA219 chip");
     while (1) { delay(10); }
   }
@@ -258,174 +232,50 @@ void setup(){
   // testFileIO(SD, "/test.txt");
   // Serial.printf("Total space: %lluMB\n", SD.totalBytes() / (1024 * 1024));
   // Serial.printf("Used space: %lluMB\n", SD.usedBytes() / (1024 * 1024));
-  pinMode(buttonPin, INPUT);
-  pinMode(button15, OUTPUT);
-  pinMode(button2, OUTPUT);
-
-
 }
 
 void loop(){
-  GPS_Data();
-  buttonState = digitalRead(buttonPin);
-  if(buttonState == HIGH){
-    MeasureAndRecordData();
-    // button15 = HIGH;
-    // button2 = LOW;
-    // writeFile(SD, "/GaN Data.csv", "First Current Sensor\n");
-    // MeasureAndRecordData();
-    // writeFile(SD, "/GaN Data.csv", "Second Current Sensor\n");
-    // delay(1000);
-    // Serial.print("The first current sensor has recorded, now going to the second");
-    // button15 = LOW;
-    // button2 = HIGH;
-    // MeasureAndRecordData();
-  }
-}
-void GPS_Data(){
-  char c = GPS.read();
-  // if you want to debug, this is a good time to do it!
-  if (GPSECHO)
-    if (c) Serial.print(c);
-  // if a sentence is received, we can check the checksum, parse it...
-  if (GPS.newNMEAreceived()) {
-    // a tricky thing here is if we print the NMEA sentence, or data
-    // we end up not listening and catching other sentences!
-    // so be very wary if using OUTPUT_ALLDATA and trying to print out data
-    Serial.println(GPS.lastNMEA()); // this also sets the newNMEAreceived() flag to false
-    if (!GPS.parse(GPS.lastNMEA())) // this also sets the newNMEAreceived() flag to false
-      return; // we can fail to parse a sentence in which case we should just wait for another
-  }
-
-  // approximately every 2 seconds or so, print out the current stats
-  if (millis() - timer > 2000) {
-    timer = millis(); // reset the timer
-    Serial.print("\nTime: ");
-    if (GPS.hour < 10) { Serial.print('0'); }
-    Serial.print(GPS.hour, DEC); Serial.print(':');
-    if (GPS.minute < 10) { Serial.print('0'); }
-    Serial.print(GPS.minute, DEC); Serial.print(':');
-    if (GPS.seconds < 10) { Serial.print('0'); }
-    Serial.print(GPS.seconds, DEC); Serial.print('.');
-    if (GPS.milliseconds < 10) {
-      Serial.print("00");
-    } else if (GPS.milliseconds > 9 && GPS.milliseconds < 100) {
-      Serial.print("0");
-    }
-    // Serial.println(GPS.milliseconds);
-    Serial.print("Date: ");
-    Serial.print(GPS.day, DEC); Serial.print('/');
-    Serial.print(GPS.month, DEC); Serial.print("/20");
-    Serial.println(GPS.year, DEC);
-    Serial.print("Fix: "); Serial.print((int)GPS.fix);
-    Serial.print(" quality: "); Serial.println((int)GPS.fixquality);
-    if (GPS.fix) {
-      Serial.print("Location: ");
-      Serial.print(GPS.latitude, 4); Serial.print(GPS.lat);
-      Serial.print(", ");
-      Serial.print(GPS.longitude, 4); Serial.println(GPS.lon);
-      Serial.print("Speed (knots): "); Serial.println(GPS.speed);
-      Serial.print("Angle: "); Serial.println(GPS.angle);
-      Serial.print("Altitude: "); Serial.println(GPS.altitude);
-      Serial.print("Satellites: "); Serial.println((int)GPS.satellites);
-    }
-  }
-  if (GPS.altitude > 15){ //This will be changed to 15km once actually running
-  Serial.print("The countdown to run the curves has started");
-  delay(30000);
-  MeasureAndRecordData();
-  }
-}
-void MeasureAndRecordData(){
-  digitalWrite(button15, HIGH);  
-  digitalWrite(button2, LOW);
-  writeFile(SD, "/GaN Data.csv", "First Current Sensor\n");
-  writeFile(SD, "/GaN Data.csv", "Vg DAC, Vd DAC, Shunt Voltage, Bus Voltage, Current, Load Voltage\n");
-  GetData();
-  writeFile(SD, "/GaN Data.csv", "Second Current Sensor\n");
-  delay(1000);
-  Serial.print("The first current sensor has recorded, now going to the second");
-  digitalWrite(button15, LOW);  
-  digitalWrite(button2, HIGH);
-  GetData();
-}
-void GetData(){
   float shuntvoltage = 0;
   float busvoltage = 0;
   float current_mA = 0;
   float loadvoltage = 0;
   float power_mW = 0;
-  char fileName[20];
-  snprintf(fileName, sizeof(fileName), "/GaN_Data_%d.csv", run_counter);
-  File dataFile = SD.open(fileName, FILE_APPEND);
-  for(int j=0;j<4096;j+=50){//steps up Vd after each transfer curve
+  int run_counter = 1;
+  String filename;
     mcp.setChannelValue(MCP4728_CHANNEL_C,j);
-    for(int i=0;i<4096;i+=100){ //sweeps Vg from -8 to 3V
-      shuntvoltage = ina219.getShuntVoltage_mV();
-      busvoltage = ina219.getBusVoltage_V();
-      current_mA = ina219.getCurrent_mA()/10;
-      power_mW = ina219.getPower_mW();
-      loadvoltage = busvoltage + (shuntvoltage / 1000);
-      // char buffer[50]; // Create a buffer to store the converted strings
-      // snprintf(buffer, sizeof(buffer), "%d,%d,%.2f,%.2f,%.2f,%.2f\n", i, j, shuntvoltage, busvoltage, current_mA, loadvoltage);
-      // appendFile(SD, "/data.csv", buffer);
-      if (dataFile) {
-        char buffer[100];// Format the data as a CSV row
+    filename = "/GaN_Data_" + String(run_counter) + ".csv";
+    const char* filenameChar = filename.c_str();
+    File dataFile = SD.open(filenameChar, FILE_WRITE);
+    if(dataFile){
+      dataFile.println("Vg DAC, Vd DAC, Shunt Voltage, Bus Voltage, Current, Load Voltage");
+      for(int i=0;i<4096;i+=100){ //sweeps Vg from -8 to 3V
+        shuntvoltage = ina219.getShuntVoltage_mV();
+        busvoltage = ina219.getBusVoltage_V();
+        current_mA = ina219.getCurrent_mA()/10;
+        power_mW = ina219.getPower_mW();
+        loadvoltage = busvoltage + (shuntvoltage / 1000);
+        char buffer[100];
         snprintf(buffer, sizeof(buffer), "%d,%d,%.2f,%.2f,%.4f,%.2f\n", i, j, shuntvoltage, busvoltage, current_mA, loadvoltage);
-        dataFile.print(buffer);// Write the data to the file
-        dataFile.close();// Close the file
-      } else {
-        Serial.println("Error opening /data.csv");
+        dataFile.print(buffer);
+        Serial.print("DAC Value Vg ");
+        Serial.println(i);
+        Serial.print("DAC Value Vd ");
+        Serial.println(j);
+        Serial.print("Bus Voltage:   "); Serial.print(busvoltage); Serial.println(" V");
+        Serial.print("Shunt Voltage: "); Serial.print(shuntvoltage); Serial.println(" mV");
+        Serial.print("Load Voltage:  "); Serial.print(loadvoltage); Serial.println(" V");
+        Serial.print("Current:       "); Serial.print(current_mA, 4); Serial.println(" mA");
+        Serial.println("\n");
+        delay(200);
       }
-      // char buffer[20]; // Create a buffer to store the converted strings
-      // snprintf(buffer, sizeof(buffer), "%d", i);
-      // char* stri = buffer;
-      // snprintf(buffer, sizeof(buffer), "%d", j);
-      // char* strj = buffer;
-      // snprintf(buffer, sizeof(buffer), "%.2f", shuntvoltage);
-      // char* strshunt = buffer;
-      // snprintf(buffer, sizeof(buffer), "%.2f", busvoltage);
-      // char* strbus = buffer;
-      // snprintf(buffer, sizeof(buffer), "%.2f", current_mA);
-      // char* strcurrent = buffer;
-      // snprintf(buffer, sizeof(buffer), "%.2f", loadvoltage);
-      // char* strload = buffer;
-      // const char* stri = i;
-      // const char* strj = j;
-      // const char* strshunt = shuntvoltage;
-      // const char* strbus = busvoltage;
-      // const char* strcurrent = current_mA;
-      // const char* strload = loadvoltage;
-
-      mcp.setChannelValue(MCP4728_CHANNEL_D,i);
-      Serial.print("DAC Value Vg ");
-      Serial.println(i);
-      // Serial.print("\n");
-      Serial.print("DAC Value Vd ");
-      Serial.println(j);
-      // Serial.print("\n");
-      // delay(20);
-      Serial.print("Bus Voltage:   "); Serial.print(busvoltage); Serial.println(" V");
-      Serial.print("Shunt Voltage: "); Serial.print(shuntvoltage); Serial.println(" mV");
-      Serial.print("Load Voltage:  "); Serial.print(loadvoltage); Serial.println(" V");
-      Serial.print("Current:       "); Serial.print(current_mA,4); Serial.println(" mA");
-      // Serial.print("Power:         "); Serial.print(power_mW); Serial.println(" mW");
-      Serial.println("\n");
-      delay(200);
-      
-      // appendFile(SD, "/GaN Data.csv", "Vg DAC:  ");appendFile(SD, "/GaN Data.csv", stri);appendFile(SD, "/GaN Data.csv", "\n");
-      // appendFile(SD, "/GaN Data.csv", "Vd DAC:  ");appendFile(SD, "/GaN Data.csv", strj);appendFile(SD, "/GaN Data.csv", "\n");
-      // appendFile(SD, "/GaN Data.csv", "Bus Voltage:   ");appendFile(SD, "/GaN Data.csv", strbus);appendFile(SD, "/GaN Data.csv", " V");appendFile(SD, "/GaN Data.csv", "\n");
-      // appendFile(SD, "/GaN Data.csv", "Shunt Voltage:   ");appendFile(SD, "/GaN Data.csv", strshunt);appendFile(SD, "/GaN Data.csv", " V");appendFile(SD, "/GaN Data.csv", "\n");
-      // appendFile(SD, "/GaN Data.csv", "Load Voltage:   ");appendFile(SD, "/GaN Data.csv", strload);appendFile(SD, "/GaN Data.csv", " V");appendFile(SD, "/GaN Data.csv", "\n");
-      // appendFile(SD, "/GaN Data.csv", "Current:   ");appendFile(SD, "/GaN Data.csv", strcurrent);appendFile(SD, "/GaN Data.csv", " mA");appendFile(SD, "/GaN Data.csv", "\n");
-      // appendFile(SD, "/GaN Data.csv", "\n\n");
-      // appendFile(SD, "/Test.txt", ");
-      // readFile(SD, "/Test.txt");
+      dataFile.close();
+      Serial.print("Data written to file: " + filename);
+    }else{
+      Serial.println("Error opening file: " + filename);
     }
-    delay(5000);
-    Serial.printf("Total space: %lluMB\n", SD.totalBytes() / (1024 * 1024));
-    Serial.printf("Used space: %lluMB\n", SD.usedBytes() / (1024 * 1024));
+    // delay(1000);
+    // Serial.printf("Total space: %lluMB\n", SD.totalBytes() / (1024 * 1024));
+    // Serial.printf("Used space: %lluMB\n", SD.usedBytes() / (1024 * 1024));
+    run_counter++;
   }
-  run_counter++;
 }
