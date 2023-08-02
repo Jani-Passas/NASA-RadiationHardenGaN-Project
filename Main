@@ -24,6 +24,12 @@ Adafruit_GPS GPS(&Wire);
 #define GPSECHO false
 uint32_t timer = millis();
 
+const int button2 = 2;
+const int button15 = 15;
+const int buttonPin = 4;
+int buttonState = 0;
+int run_counter = 1;
+
 void listDir(fs::FS &fs, const char * dirname, uint8_t levels){
   Serial.printf("Listing directory: %s\n", dirname);
 
@@ -252,6 +258,11 @@ void setup(){
   // testFileIO(SD, "/test.txt");
   // Serial.printf("Total space: %lluMB\n", SD.totalBytes() / (1024 * 1024));
   // Serial.printf("Used space: %lluMB\n", SD.usedBytes() / (1024 * 1024));
+  pinMode(buttonPin, INPUT);
+  pinMode(button15, OUTPUT);
+  pinMode(button2, OUTPUT);
+
+
 }
 
 void loop(){
@@ -307,17 +318,45 @@ void loop(){
   delay(30000);
   MeasureAndRecordData();
   }
-}
+  buttonState = digitalRead(buttonPin);
+  if(buttonState == HIGH){
+    MeasureAndRecordData();
 
+
+    // button15 = HIGH;
+    // button2 = LOW;
+    // writeFile(SD, "/GaN Data.csv", "First Current Sensor\n");
+    // MeasureAndRecordData();
+    // writeFile(SD, "/GaN Data.csv", "Second Current Sensor\n");
+    // delay(1000);
+    // Serial.print("The first current sensor has recorded, now going to the second");
+    // button15 = LOW;
+    // button2 = HIGH;
+    // MeasureAndRecordData();
+  }
+}
 void MeasureAndRecordData(){
+  digitalWrite(button15, HIGH);  
+  digitalWrite(button2, LOW);
+  writeFile(SD, "/GaN Data.csv", "First Current Sensor\n");
+  writeFile(SD, "/GaN Data.csv", "Vg DAC, Vd DAC, Shunt Voltage, Bus Voltage, Current, Load Voltage\n");
+  GetData();
+  writeFile(SD, "/GaN Data.csv", "Second Current Sensor\n");
+  delay(1000);
+  Serial.print("The first current sensor has recorded, now going to the second");
+  digitalWrite(button15, LOW);  
+  digitalWrite(button2, HIGH);
+  GetData();
+}
+void GetData(){
   float shuntvoltage = 0;
   float busvoltage = 0;
   float current_mA = 0;
   float loadvoltage = 0;
   float power_mW = 0;
-  writeFile(SD, "/GaN Data.csv", "Vg DAC, Vd DAC, Shunt Voltage, Bus Voltage, Current, Load Voltage\n");
-
-
+  char fileName[20];
+  snprintf(fileName, sizeof(fileName), "/GaN_Data_%d.csv", run_counter);
+  File dataFile = SD.open(fileName, FILE_APPEND);
   for(int j=0;j<4096;j+=50){//steps up Vd after each transfer curve
     mcp.setChannelValue(MCP4728_CHANNEL_C,j);
     for(int i=0;i<4096;i+=100){ //sweeps Vg from -8 to 3V
@@ -329,7 +368,6 @@ void MeasureAndRecordData(){
       // char buffer[50]; // Create a buffer to store the converted strings
       // snprintf(buffer, sizeof(buffer), "%d,%d,%.2f,%.2f,%.2f,%.2f\n", i, j, shuntvoltage, busvoltage, current_mA, loadvoltage);
       // appendFile(SD, "/data.csv", buffer);
-      File dataFile = SD.open("/GaN Data.csv", FILE_APPEND);
       if (dataFile) {
         char buffer[100];// Format the data as a CSV row
         snprintf(buffer, sizeof(buffer), "%d,%d,%.2f,%.2f,%.4f,%.2f\n", i, j, shuntvoltage, busvoltage, current_mA, loadvoltage);
@@ -388,4 +426,5 @@ void MeasureAndRecordData(){
     Serial.printf("Total space: %lluMB\n", SD.totalBytes() / (1024 * 1024));
     Serial.printf("Used space: %lluMB\n", SD.usedBytes() / (1024 * 1024));
   }
+  run_counter++;
 }
