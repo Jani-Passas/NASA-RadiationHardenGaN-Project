@@ -242,6 +242,7 @@ void loop(){
   float power_mW = 0;
   int run_counter = 1;
   String filename;
+  for(int j=0; j<4096;j+=50){
     mcp.setChannelValue(MCP4728_CHANNEL_C,j);
     filename = "/GaN_Data_" + String(run_counter) + ".csv";
     const char* filenameChar = filename.c_str();
