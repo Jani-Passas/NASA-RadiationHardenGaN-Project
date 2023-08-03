@@ -242,7 +242,7 @@ void loop(){
   float power_mW = 0;
   int run_counter = 1;
   String filename;
-  for(int j=0; j<4096;j+=50){
+  for(int j=0; j<4096;j+=200){
     mcp.setChannelValue(MCP4728_CHANNEL_C,j);
     filename = "/GaN_Data_" + String(run_counter) + ".csv";
     const char* filenameChar = filename.c_str();
@@ -250,6 +250,7 @@ void loop(){
     if(dataFile){
       dataFile.println("Vg DAC, Vd DAC, Shunt Voltage, Bus Voltage, Current, Load Voltage");
       for(int i=0;i<4096;i+=100){ //sweeps Vg from -8 to 3V
+      mcp.setChannelValue(MCP4728_CHANNEL_D,i);
         shuntvoltage = ina219.getShuntVoltage_mV();
         busvoltage = ina219.getBusVoltage_V();
         current_mA = ina219.getCurrent_mA()/10;
@@ -270,7 +271,7 @@ void loop(){
         delay(200);
       }
       dataFile.close();
-      Serial.print("Data written to file: " + filename);
+      Serial.print("Data written to file: " + filename + "\n");
     }else{
       Serial.println("Error opening file: " + filename);
     }
