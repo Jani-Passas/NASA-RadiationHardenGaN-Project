@@ -7,6 +7,8 @@ Adafruit_INA219 ina219;
 Adafruit_MCP4728 mcp;
 #define DAC_CH1 26
 #define DAC_CH2 25
+int run_counter = 101;
+
 
 #include "FS.h"
 #include "SD.h"
@@ -240,9 +242,8 @@ void loop(){
   float current_mA = 0;
   float loadvoltage = 0;
   float power_mW = 0;
-  int run_counter = 1;
   String filename;
-  for(int j=0; j<4096;j+=200){
+  for(int j=0; j<4096;j+=198){
     mcp.setChannelValue(MCP4728_CHANNEL_C,j);
     filename = "/GaN_Data_" + String(run_counter) + ".csv";
     const char* filenameChar = filename.c_str();
@@ -250,7 +251,8 @@ void loop(){
     if(dataFile){
       dataFile.println("Vg DAC, Vd DAC, Shunt Voltage, Bus Voltage, Current, Load Voltage");
       for(int i=0;i<4096;i+=100){ //sweeps Vg from -8 to 3V
-      mcp.setChannelValue(MCP4728_CHANNEL_D,i);
+        mcp.setChannelValue(MCP4728_CHANNEL_D,i);
+        delay(25);
         shuntvoltage = ina219.getShuntVoltage_mV();
         busvoltage = ina219.getBusVoltage_V();
         current_mA = ina219.getCurrent_mA()/10;
@@ -259,16 +261,16 @@ void loop(){
         char buffer[100];
         snprintf(buffer, sizeof(buffer), "%d,%d,%.2f,%.2f,%.4f,%.2f\n", i, j, shuntvoltage, busvoltage, current_mA, loadvoltage);
         dataFile.print(buffer);
-        Serial.print("DAC Value Vg ");
-        Serial.println(i);
-        Serial.print("DAC Value Vd ");
-        Serial.println(j);
-        Serial.print("Bus Voltage:   "); Serial.print(busvoltage); Serial.println(" V");
-        Serial.print("Shunt Voltage: "); Serial.print(shuntvoltage); Serial.println(" mV");
-        Serial.print("Load Voltage:  "); Serial.print(loadvoltage); Serial.println(" V");
-        Serial.print("Current:       "); Serial.print(current_mA, 4); Serial.println(" mA");
-        Serial.println("\n");
-        delay(200);
+        // Serial.print("DAC Value Vg ");
+        // Serial.println(i);
+        // Serial.print("DAC Value Vd ");
+        // Serial.println(j);
+        // Serial.print("Bus Voltage:   "); Serial.print(busvoltage); Serial.println(" V");
+        // Serial.print("Shunt Voltage: "); Serial.print(shuntvoltage); Serial.println(" mV");
+        // Serial.print("Load Voltage:  "); Serial.print(loadvoltage); Serial.println(" V");
+        // Serial.print("Current:       "); Serial.print(current_mA, 4); Serial.println(" mA");
+        // Serial.println("\n");
+        delay(20);
       }
       dataFile.close();
       Serial.print("Data written to file: " + filename + "\n");
@@ -279,5 +281,8 @@ void loop(){
     // Serial.printf("Total space: %lluMB\n", SD.totalBytes() / (1024 * 1024));
     // Serial.printf("Used space: %lluMB\n", SD.usedBytes() / (1024 * 1024));
     run_counter++;
+    Serial.print("The run counter is given as ");
+    Serial.println(run_counter);
   }
+  run_counter+=79;
 }
