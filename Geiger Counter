@@ -1,109 +1,154 @@
-/*
-  Counts and records pulses output from MightyOhm Geiger counter.
-  Calculates counts per second, minute, and hour (CPS,CPM,and CPH) based on tracking output from
-  millis().
-*/  
-// #include 
-#include "SD.h"
+#include <SD.h>
 #include <Arduino.h>
 #include <Wire.h>
 #include <Adafruit_INA219.h>
 #include <Adafruit_MCP4728.h>
 
-// nInterrupt=0 is for digital pin 2, 1 is for pin 3
-const int SDpin=10, nInterrupt=0, interruptPin=2; 
-volatile int knt=0, counter=0;
-long unsigned int millis_start,M;
-int i=1;
-int title = 1;
+const int SDpin = 10;
+const int nInterrupt = 0;
+const int interruptPin = 2;
+int holder = 0;
 
-// File logfile;
+volatile int knt = 0, counter = 0;
+long unsigned int millis_start, M;
+int i = 1;
+int title = 1;
+int sec_counter = 0;
+int min_counter = 0;
+int hour_counter = 0;
+int day_counter = 0;
+
+int sec_geiger_counter = 0;
+int min_geiger_counter = 0;
+int hour_geiger_counter = 0;
+int day_geiger_counter = 0;
+
+double total_cps = 0.0;
+double total_cpm = 0.0;
+double total_cph = 0.0;
+
+unsigned long lastSecondMillis = 0;
+unsigned long lastMinuteMillis = 0;
+unsigned long lastHourMillis = 0;
+unsigned long lastDayMillis = 0;
+
+
 void setup() {
   Serial.begin(9600);
-  if (!SD.begin(SDpin)) {Serial.println("Card failed."); 
-    delay(50);exit(0);
+  if (!SD.begin(SDpin)) {
+    Serial.println("Card failed.");
+    while (true); // Halts the program
   }
-  pinMode(interruptPin,INPUT_PULLUP); // built-in resistor.
-  attachInterrupt(nInterrupt,isr,RISING); // Start watching.
-  millis_start=millis();  
-  Serial.print("Starting to run now\n\n");
+  pinMode(interruptPin, INPUT_PULLUP);
+  attachInterrupt(nInterrupt, isr, RISING);
+  millis_start = millis();
+  Serial.println("Starting to run now\n");
 }
+
 void isr() { // interrupt service routine
   counter = knt;
-  knt++; 
-  M=millis();
+  sec_geiger_counter ++;
+  min_geiger_counter ++;
+  hour_geiger_counter ++;
+  day_geiger_counter ++;
+  knt++;
+  M = millis();
 }
+
 void loop() {
-  // int test = M-millis_start;
-  // Serial.print("Test value is: ");
-  // Serial.println(test);
-  if (counter!=knt && (M-millis_start)>(10000L*i)){
+  if ((M - millis_start) > (60000L * i) && counter != knt) {
     RecordGeigerData();
-      // File GeigerFile;
-      // String Geiger_filename = "Geiger" + String(counter) + ".csv";
-      // GeigerFile = SD.open(Geiger_filename, FILE_WRITE);
+    holder = 1;
+  }
 
-      // String Geiger_header = "Running Time (s), Running Time (min), Running Time (hours), Counts, CPS, CPM, CPH";
-      // String dataRow = String(sec, 2) + "," + String(min, 3) + "," + String(hour, 4) + "," + String(knt) + "," + String(avg_s, 2) + "," + String(avg_m, 3) + "," + String(avg_h, 4);
-      
-      // GeigerFile.println(Geiger_header);
-      // GeigerFile.println(dataRow);
+  unsigned long currentMillis = millis();
+  if (currentMillis - lastSecondMillis >= 1000) {
+    sec_counter++;
+  }
 
-      // Serial.print("\nRunning time is "); Serial.print(sec,2); Serial.print(" seconds");
-      // Serial.print("\nRunning time in minutes is "); Serial.print(min,3); Serial.print(" minutes");
-      // Serial.print("\nRunning time in hours is "); Serial.print(hour,4); Serial.print(" hours");
-      // Serial.print("\nCounts is "); Serial.print(knt);
-      // // Serial.print(M); Serial.print(' ');Serial.println(knt);
-      // Serial.print("\nRunning average CPS is ");
-      // Serial.print(avg_s,2);
-      // Serial.print("\nRunning average CPM is ");
-      // Serial.print(avg_m,3);
-      // Serial.print("\nRunning average CPH is ");
-      // Serial.print(avg_h,4);
-      // Serial.print("\n");
-      // counter++;
-      // i++;
+  // Reset CPS every minute
+  if (currentMillis - lastMinuteMillis >= 60000 && holder == 1) {
+    lastMinuteMillis = currentMillis;
+    total_cps = double(sec_geiger_counter) / 60;
+    sec_geiger_counter = 0;
+    min_counter++;
+    holder = 0;
+  }
+
+  // Reset CPM every hour
+  if (currentMillis - lastHourMillis >= 3600000 && holder == 1) {
+    lastHourMillis = currentMillis;
+    total_cpm = double(min_geiger_counter) / 3600;
+    min_geiger_counter = 0;
+    hour_counter++;
+    holder = 0;
+  }
+
+  // Reset CPH every day
+  if (currentMillis - lastDayMillis >= 86400000 && holder == 1) {
+    lastDayMillis = currentMillis;
+    total_cph = double(hour_geiger_counter) / 86400;
+    hour_geiger_counter = 0;
+    day_counter++;
+    holder = 0;
   }
 }
-void RecordGeigerData(){
-  double sec = (double(M-millis_start))/1000;
-  double min = (double(M-millis_start))/60000;
-  double hour = (double(M-millis_start))/3600000;
-  double avg_s = knt/sec;
-  double avg_m = knt/min;
-  double avg_h = knt/hour;
+
+void RecordGeigerData() {
+  double sec_passed = (double(M - millis_start)) / 1000;
+  double min_passed = (double(M - millis_start)) / 60000;
+  double hour_passed = (double(M - millis_start)) / 3600000;
+  double avg_s = knt / sec_passed;
+  double avg_m = total_cpm / min_passed;
+  double avg_h = total_cph / hour_passed;    
+
   File GeigerFile;
-  // String Geiger_filename = "Geiger" + String(title) + ".csv";
-  String Geiger_filename = "Geiger1.csv";
+  String Geiger_filename = "Geiger.csv";
   GeigerFile = SD.open(Geiger_filename, FILE_WRITE);
-  String Geiger_header = "Running Time (s), Running Time (min), Running Time (hours), Counts, CPS, CPM, CPH";
-  String dataRow = String(sec, 2) + "," + String(min, 3) + "," + String(hour, 4) + "," + String(knt) + "," + String(avg_s, 2) + "," + String(avg_m, 3) + "," + String(avg_h, 4);
-      
-  if(GeigerFile){
-    if(title==1){
+
+
+  String Geiger_header = "Running Time (s), Running Time (min), Running Time (hours), Counts in last min, Counts in last hour, counts in last day, Total Counts, Time (s), Time(min), Time (hours), Time (days), CPS, CPM, CPH";
+  String dataRow = String(sec_passed, 2) + "," + String(min_passed, 3) + "," + String(hour_passed, 4) + "," + String(sec_geiger_counter) + "," + String(min_geiger_counter) + "," + String(hour_geiger_counter) + "," + String(knt) + "," + String(sec_counter, 2) + "," + String(min_counter, 2) + "," + String(hour_counter, 2) + "," + String(day_counter) + "," + String(total_cps, 2) + "," + String(total_cpm, 3) + "," + String(total_cph, 4);
+
+  if (GeigerFile) {
+    if (title == 1) {
       GeigerFile.println(Geiger_header);
-      title=2;
+      title = 2;
     }
     GeigerFile.println(dataRow);
     GeigerFile.close();
-    Serial.print("Data written to:");
+    Serial.print("Data written to: ");
+    Serial.print(Geiger_filename);
+  } else {
+    Serial.print("Error opening file: ");
     Serial.println(Geiger_filename);
-  }else{
-    Serial.print("Error opening file: " + Geiger_filename);
   }
-  Serial.print("\nRunning time is "); Serial.print(sec,2); Serial.print(" seconds");
-  Serial.print("\nRunning time in minutes is "); Serial.print(min,3); Serial.print(" minutes");
-  Serial.print("\nRunning time in hours is "); Serial.print(hour,4); Serial.print(" hours");
-  Serial.print("\nCounts is "); Serial.print(knt);
-  // Serial.print(M); Serial.print(' ');Serial.println(knt);
-  Serial.print("\nRunning average CPS is ");
-  Serial.print(avg_s,2);
-  Serial.print("\nRunning average CPM is ");
-  Serial.print(avg_m,3);
-  Serial.print("\nRunning average CPH is ");
-  Serial.print(avg_h,4);
+
+  Serial.print("\nRunning time is ");
+  Serial.print(sec_passed, 2);
+  Serial.print(" seconds");
+  Serial.print("\nRunning time in minutes is ");
+  Serial.print(min_passed, 3);
+  Serial.print(" minutes");
+  Serial.print("\nRunning time in hours is ");
+  Serial.print(hour_passed, 4);
+  Serial.print(" hours");
+  Serial.print("\nTotal counts is ");
+  Serial.print(knt);
+  Serial.print("\nCounts in last min: ");
+  Serial.println(sec_geiger_counter);
+  Serial.print("Counts in last hour: ");
+  Serial.println(min_geiger_counter);
+  Serial.print("Counts in last day: ");
+  Serial.println(hour_geiger_counter);
+  Serial.print("Total CPS is ");
+  Serial.print(total_cps);
+  Serial.print("\nTotal CPM is ");
+  Serial.print(total_cpm);
+  Serial.print("\nTotal CPH is ");
+  Serial.print(total_cph);
   Serial.print("\n");
+
   counter++;
   i++;
-  // title++;
 }
