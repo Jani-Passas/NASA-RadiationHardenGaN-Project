@@ -10,13 +10,13 @@ const int interruptPin = 2;
 int holder = 0;
 
 volatile int knt = 0, counter = 0;
-long unsigned int millis_start, M;
+long unsigned int millis_start, M, SEC, MIN, HOUR;
 int i = 1;
 int title = 1;
-int sec_counter = 0;
-int min_counter = 0;
-int hour_counter = 0;
-int day_counter = 0;
+double sec_counter = 0;
+double min_counter = 0;
+double hour_counter = 0;
+double day_counter = 0;
 
 int sec_geiger_counter = 0;
 int min_geiger_counter = 0;
@@ -37,7 +37,7 @@ void setup() {
   Serial.begin(9600);
   if (!SD.begin(SDpin)) {
     Serial.println("Card failed.");
-    while (true); // Halts the program
+    while (true);
   }
   pinMode(interruptPin, INPUT_PULLUP);
   attachInterrupt(nInterrupt, isr, RISING);
@@ -45,7 +45,7 @@ void setup() {
   Serial.println("Starting to run now\n");
 }
 
-void isr() { // interrupt service routine
+void isr() { 
   counter = knt;
   sec_geiger_counter ++;
   min_geiger_counter ++;
@@ -53,6 +53,9 @@ void isr() { // interrupt service routine
   day_geiger_counter ++;
   knt++;
   M = millis();
+  SEC = millis();
+  MIN = millis();
+  HOUR = millis();
 }
 
 void loop() {
@@ -69,27 +72,30 @@ void loop() {
   // Reset CPS every minute
   if (currentMillis - lastMinuteMillis >= 60000 && holder == 1) {
     lastMinuteMillis = currentMillis;
-    total_cps = double(sec_geiger_counter) / 60;
+    SEC = millis_start;
+    // total_cps = double(sec_geiger_counter) / 60;
     sec_geiger_counter = 0;
-    min_counter++;
+    // min_counter++;
     holder = 0;
   }
 
   // Reset CPM every hour
   if (currentMillis - lastHourMillis >= 3600000 && holder == 1) {
     lastHourMillis = currentMillis;
-    total_cpm = double(min_geiger_counter) / 3600;
+    MIN = millis_start;
+    // total_cpm = double(min_geiger_counter) / 3600;
     min_geiger_counter = 0;
-    hour_counter++;
+    // hour_counter++;
     holder = 0;
   }
 
   // Reset CPH every day
   if (currentMillis - lastDayMillis >= 86400000 && holder == 1) {
     lastDayMillis = currentMillis;
-    total_cph = double(hour_geiger_counter) / 86400;
+    HOUR = millis_start;
+    // total_cph = double(hour_geiger_counter) / 86400;
     hour_geiger_counter = 0;
-    day_counter++;
+    // day_counter++;
     holder = 0;
   }
 }
@@ -98,17 +104,29 @@ void RecordGeigerData() {
   double sec_passed = (double(M - millis_start)) / 1000;
   double min_passed = (double(M - millis_start)) / 60000;
   double hour_passed = (double(M - millis_start)) / 3600000;
+  double sec_counter = (double(SEC - millis_start)) / 1000;
+  double min_counter = (double(MIN - millis_start)) / 60000;
+  double hour_counter = (double(HOUR - millis_start)) / 3600000;
   double avg_s = knt / sec_passed;
   double avg_m = total_cpm / min_passed;
-  double avg_h = total_cph / hour_passed;    
+  double avg_h = total_cph / hour_passed;
+
+  // int sec_geiger_counter;
+  // int min_geiger_counter;
+  // int hour_geiger_counter;
+  // int day_geiger_counter;  
+  
+  total_cps = double(sec_geiger_counter) / sec_counter;
+  total_cpm = double(min_geiger_counter) / min_counter;
+  total_cph = double(hour_geiger_counter) / hour_counter;
 
   File GeigerFile;
   String Geiger_filename = "Geiger.csv";
   GeigerFile = SD.open(Geiger_filename, FILE_WRITE);
 
 
-  String Geiger_header = "Running Time (s), Running Time (min), Running Time (hours), Counts in last min, Counts in last hour, counts in last day, Total Counts, Time (s), Time(min), Time (hours), Time (days), CPS, CPM, CPH";
-  String dataRow = String(sec_passed, 2) + "," + String(min_passed, 3) + "," + String(hour_passed, 4) + "," + String(sec_geiger_counter) + "," + String(min_geiger_counter) + "," + String(hour_geiger_counter) + "," + String(knt) + "," + String(sec_counter, 2) + "," + String(min_counter, 2) + "," + String(hour_counter, 2) + "," + String(day_counter) + "," + String(total_cps, 2) + "," + String(total_cpm, 3) + "," + String(total_cph, 4);
+  String Geiger_header = /*Running Time (s), Running Time (min), Running Time (hours),*/ "Counts in last min, Counts in last hour, counts in last day, Total Counts, Time (s), Time(min), Time (hours), Time (days), CPS, CPM, CPH";
+  String dataRow = /*String(sec_passed, 2) + "," + String(min_passed, 3) + "," + String(hour_passed, 4) + "," + */String(sec_geiger_counter) + "," + String(min_geiger_counter) + "," + String(hour_geiger_counter) + "," + String(knt) + "," + String(sec_counter, 2) + "," + String(min_counter, 2) + "," + String(hour_counter, 2) + "," + String(day_counter) + "," + String(total_cps, 2) + "," + String(total_cpm, 3) + "," + String(total_cph, 4);
 
   if (GeigerFile) {
     if (title == 1) {
@@ -146,9 +164,16 @@ void RecordGeigerData() {
   Serial.print("\nTotal CPM is ");
   Serial.print(total_cpm);
   Serial.print("\nTotal CPH is ");
-  Serial.print(total_cph);
+  Serial.println(total_cph);
+  Serial.print("Current senconds: ");
+  Serial.println(sec_counter);
+  Serial.print("Current minutes: ");
+  Serial.println(min_counter);
+  Serial.print("Current hour: ");
+  Serial.println(hour_counter);
+  Serial.print("Current day: ");
+  Serial.println(day_counter);
   Serial.print("\n");
-
   counter++;
   i++;
 }
