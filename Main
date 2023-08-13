@@ -1,3 +1,8 @@
+/*
+This is the main code which runs the step and sweep to collect transfer curve data
+The first run set is titles one hundred and 1-20, then the second set of curves starts with 201
+*/
+//library files
 #include <Arduino.h>
 #include <Wire.h>
 #include <Adafruit_INA219.h>
@@ -5,9 +10,10 @@
 
 Adafruit_INA219 ina219;
 Adafruit_MCP4728 mcp;
+//two DAC pins
 #define DAC_CH1 26
 #define DAC_CH2 25
-int run_counter = 101;
+int run_counter = 101;//for the title
 
 
 #include "FS.h"
@@ -79,6 +85,7 @@ void readFile(fs::FS &fs, const char * path){
   file.close();
 }
 
+//write file funciton
 void writeFile(fs::FS &fs, const char * path, const char * message){
   Serial.printf("Writing file: %s\n", path);
 
@@ -95,6 +102,7 @@ void writeFile(fs::FS &fs, const char * path, const char * message){
   file.close();
 }
 
+//append file function
 void appendFile(fs::FS &fs, const char * path, const char * message){
   Serial.printf("Appending to file: %s\n", path);
 
@@ -173,7 +181,7 @@ void testFileIO(fs::FS &fs, const char * path){
 
 void setup(){
   Serial.begin(115200);
-  if(!SD.begin(5)){
+  if(!SD.begin(5)){//test setup of card
     Serial.println("Card Mount Failed");
     return;
   }
@@ -188,14 +196,14 @@ void setup(){
   Serial.println("Adafruit MCP4728 test!");
   Serial.println("Adafruit INA219 test!");
 
-  if (! ina219.begin()) {
+  if (! ina219.begin()) {//find ina219 chip
     Serial.println("Failed to find INA219 chip");
     while (1) { delay(10); }
   }
 
   ina219.setCalibration_16V_400mA();
 
-  if (!mcp.begin()){
+  if (!mcp.begin()){//find mcp chip
 
     Serial.println("Failed to find MCP4728 chip");
     while (1) {
@@ -237,30 +245,35 @@ void setup(){
 }
 
 void loop(){
+  //declary and reset all the voltages/current measurements
   float shuntvoltage = 0;
   float busvoltage = 0;
   float current_mA = 0;
   float loadvoltage = 0;
   float power_mW = 0;
   String filename;
-  for(int j=0; j<4096;j+=198){
+  for(int j=0; j<4096;j+=198){//step for Vd (20 steps by .5V each time)
     mcp.setChannelValue(MCP4728_CHANNEL_C,j);
-    filename = "/GaN_Data_" + String(run_counter) + ".csv";
-    const char* filenameChar = filename.c_str();
-    File dataFile = SD.open(filenameChar, FILE_WRITE);
+    filename = "/GaN_Data_" + String(run_counter) + ".csv";//create new file for each step
+    const char* filenameChar = filename.c_str(); //need to use char for filenames
+    File dataFile = SD.open(filenameChar, FILE_WRITE); //open file in write mode
     if(dataFile){
-      dataFile.println("Vg DAC, Vd DAC, Shunt Voltage, Bus Voltage, Current, Load Voltage");
+      dataFile.println("Vg DAC, Vd DAC, Shunt Voltage, Bus Voltage, Current, Load Voltage"); //print header
       for(int i=0;i<4096;i+=100){ //sweeps Vg from -8 to 3V
         mcp.setChannelValue(MCP4728_CHANNEL_D,i);
         delay(25);
+
+        //get measurement values
         shuntvoltage = ina219.getShuntVoltage_mV();
         busvoltage = ina219.getBusVoltage_V();
         current_mA = ina219.getCurrent_mA()/10;
         power_mW = ina219.getPower_mW();
         loadvoltage = busvoltage + (shuntvoltage / 1000);
+
+        //put all data into a buffer array to be printed at once
         char buffer[100];
         snprintf(buffer, sizeof(buffer), "%d,%d,%.2f,%.2f,%.4f,%.2f\n", i, j, shuntvoltage, busvoltage, current_mA, loadvoltage);
-        dataFile.print(buffer);
+        dataFile.print(buffer); //print the data into the csv file
         // Serial.print("DAC Value Vg ");
         // Serial.println(i);
         // Serial.print("DAC Value Vd ");
@@ -273,16 +286,17 @@ void loop(){
         delay(20);
       }
       dataFile.close();
-      Serial.print("Data written to file: " + filename + "\n");
+      Serial.print("Data written to file: " + filename + "\n"); //tell user the data is written
     }else{
       Serial.println("Error opening file: " + filename);
     }
     // delay(1000);
     // Serial.printf("Total space: %lluMB\n", SD.totalBytes() / (1024 * 1024));
     // Serial.printf("Used space: %lluMB\n", SD.usedBytes() / (1024 * 1024));
-    run_counter++;
+    run_counter++; //increase counter
     Serial.print("The run counter is given as ");
     Serial.println(run_counter);
   }
-  run_counter+=79;
+  run_counter+=79; 
+  //this is 79 because there are 20 steps for each transfer set, then the next set should start at 201 for the second run
 }
