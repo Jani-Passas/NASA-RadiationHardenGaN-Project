@@ -1,3 +1,7 @@
+/*This code has the correct data collection as seen in the Serial monitor since it resets as intended
+  however the SD card is not being written to properly yet despite being the same format as other 
+  fully functional csv file code with the same geiger counter
+*/
 #include <SD.h>
 #include <Arduino.h>
 #include <Wire.h>
