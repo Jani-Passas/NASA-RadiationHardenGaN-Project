@@ -4,9 +4,10 @@
 #include <Adafruit_INA219.h>
 #include <Adafruit_MCP4728.h>
 
-const int SDpin = 10;
+//Initialize variables
+const int SDpin = 10; //arduino pin connection for SD card
 const int nInterrupt = 0;
-const int interruptPin = 2;
+const int interruptPin = 2; //arduino pin for interrupt
 int holder = 0;
 
 volatile int knt = 0, counter = 0;
@@ -35,23 +36,25 @@ unsigned long lastDayMillis = 0;
 
 void setup() {
   Serial.begin(9600);
-  if (!SD.begin(SDpin)) {
+  if (!SD.begin(SDpin)) {//SD card setup needed to run rest of code
     Serial.println("Card failed.");
     while (true);
   }
-  pinMode(interruptPin, INPUT_PULLUP);
+  pinMode(interruptPin, INPUT_PULLUP);//start interrupt setup
   attachInterrupt(nInterrupt, isr, RISING);
-  millis_start = millis();
+  millis_start = millis(); //millis timer
   Serial.println("Starting to run now\n");
 }
 
-void isr() { 
+void isr() { //interrupt occurance from arduino/geiger
+  //counts increases
   counter = knt;
   sec_geiger_counter ++;
   min_geiger_counter ++;
   hour_geiger_counter ++;
   day_geiger_counter ++;
-  knt++;
+  knt++; //total counts goes up
+  //reset millis timers
   M = millis();
   SEC = millis();
   MIN = millis();
@@ -59,24 +62,24 @@ void isr() {
 }
 
 void loop() {
-  if ((M - millis_start) > (60000L * i) && counter != knt) {
+  if ((M - millis_start) > (60000L * i) && counter != knt) {//every minute, once an occurance happens, call RecordGeigerData function and set holder to 1
     RecordGeigerData();
     holder = 1;
   }
 
   unsigned long currentMillis = millis();
-  if (currentMillis - lastSecondMillis >= 1000) {
+  if (currentMillis - lastSecondMillis >= 1000) { //increase sec counter every second passed
     sec_counter++;
   }
 
   // Reset CPS every minute
-  if (currentMillis - lastMinuteMillis >= 60000 && holder == 1) {
-    lastMinuteMillis = currentMillis;
+  if (currentMillis - lastMinuteMillis >= 60000 && holder == 1) {//every minute and when the holder is 1 (after recording data)
+    lastMinuteMillis = currentMillis;//reset timer comparison
     SEC = millis_start;
     // total_cps = double(sec_geiger_counter) / 60;
-    sec_geiger_counter = 0;
+    sec_geiger_counter = 0; //reset geiger counter for seconds
     // min_counter++;
-    holder = 0;
+    holder = 0; //reset holder variable
   }
 
   // Reset CPM every hour
@@ -101,12 +104,14 @@ void loop() {
 }
 
 void RecordGeigerData() {
+  //total time passed with very detailed information since a double
   double sec_passed = (double(M - millis_start)) / 1000;
   double min_passed = (double(M - millis_start)) / 60000;
   double hour_passed = (double(M - millis_start)) / 3600000;
   double sec_counter = (double(SEC - millis_start)) / 1000;
   double min_counter = (double(MIN - millis_start)) / 60000;
   double hour_counter = (double(HOUR - millis_start)) / 3600000;
+  //these are total running average CPS, CPM, and CPH that is less helpful
   double avg_s = knt / sec_passed;
   double avg_m = total_cpm / min_passed;
   double avg_h = total_cph / hour_passed;
@@ -116,23 +121,27 @@ void RecordGeigerData() {
   // int hour_geiger_counter;
   // int day_geiger_counter;  
   
+  //this is resetting CPS,CPM, and CPH that is more helpful
   total_cps = double(sec_geiger_counter) / sec_counter;
   total_cpm = double(min_geiger_counter) / min_counter;
   total_cph = double(hour_geiger_counter) / hour_counter;
 
+  //Create SD card file
   File GeigerFile;
   String Geiger_filename = "Geiger.csv";
   GeigerFile = SD.open(Geiger_filename, FILE_WRITE);
 
-
+  //Header of what is in each column
   String Geiger_header = /*Running Time (s), Running Time (min), Running Time (hours),*/ "Counts in last min, Counts in last hour, counts in last day, Total Counts, Time (s), Time(min), Time (hours), Time (days), CPS, CPM, CPH";
+  //Formatted string that creates new cells in a csv file
   String dataRow = /*String(sec_passed, 2) + "," + String(min_passed, 3) + "," + String(hour_passed, 4) + "," + */String(sec_geiger_counter) + "," + String(min_geiger_counter) + "," + String(hour_geiger_counter) + "," + String(knt) + "," + String(sec_counter, 2) + "," + String(min_counter, 2) + "," + String(hour_counter, 2) + "," + String(day_counter) + "," + String(total_cps, 2) + "," + String(total_cpm, 3) + "," + String(total_cph, 4);
 
   if (GeigerFile) {
-    if (title == 1) {
+    if (title == 1) {//only print the header the first time
       GeigerFile.println(Geiger_header);
       title = 2;
     }
+    //print in the csv file the data and close it
     GeigerFile.println(dataRow);
     GeigerFile.close();
     Serial.print("Data written to: ");
@@ -141,7 +150,7 @@ void RecordGeigerData() {
     Serial.print("Error opening file: ");
     Serial.println(Geiger_filename);
   }
-
+  //Serial print to show user running on computer that code is working
   Serial.print("\nRunning time is ");
   Serial.print(sec_passed, 2);
   Serial.print(" seconds");
@@ -174,6 +183,8 @@ void RecordGeigerData() {
   Serial.print("Current day: ");
   Serial.println(day_counter);
   Serial.print("\n");
+
+  //increase the counters
   counter++;
   i++;
 }
