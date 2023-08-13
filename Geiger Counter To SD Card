@@ -3,14 +3,14 @@
   Calculates counts per second, minute, and hour (CPS,CPM,and CPH) based on tracking output from
   millis().
 */  
-// #include 
+// library files 
 #include "SD.h"
 #include <Arduino.h>
 #include <Wire.h>
 #include <Adafruit_INA219.h>
 #include <Adafruit_MCP4728.h>
 
-// nInterrupt=0 is for digital pin 2, 1 is for pin 3
+// nInterrupt=0 is for digital pin 2
 const int SDpin=10, nInterrupt=0, interruptPin=2; 
 volatile int knt=0, counter=0;
 long unsigned int millis_start,M;
@@ -28,7 +28,7 @@ void setup() {
   millis_start=millis();  
   Serial.print("Starting to run now\n\n");
 }
-void isr() { // interrupt service routine
+void isr() { // interrupt service routine function
   counter = knt;
   knt++; 
   M=millis();
@@ -37,7 +37,7 @@ void loop() {
   // int test = M-millis_start;
   // Serial.print("Test value is: ");
   // Serial.println(test);
-  if (counter!=knt && (M-millis_start)>(10000L*i)){
+  if (counter!=knt && (M-millis_start)>(10000L*i)){ //every ten seconds, for the next interruption, record the data to the geiger gounter
     RecordGeigerData();
       // File GeigerFile;
       // String Geiger_filename = "Geiger" + String(counter) + ".csv";
@@ -66,31 +66,37 @@ void loop() {
   }
 }
 void RecordGeigerData(){
+  //total time passed
   double sec = (double(M-millis_start))/1000;
   double min = (double(M-millis_start))/60000;
   double hour = (double(M-millis_start))/3600000;
+
+  //total averages for CPS,CPM,CPH
   double avg_s = knt/sec;
   double avg_m = knt/min;
   double avg_h = knt/hour;
+
+  //create file
   File GeigerFile;
   // String Geiger_filename = "Geiger" + String(title) + ".csv";
-  String Geiger_filename = "Geiger1.csv";
-  GeigerFile = SD.open(Geiger_filename, FILE_WRITE);
-  String Geiger_header = "Running Time (s), Running Time (min), Running Time (hours), Counts, CPS, CPM, CPH";
-  String dataRow = String(sec, 2) + "," + String(min, 3) + "," + String(hour, 4) + "," + String(knt) + "," + String(avg_s, 2) + "," + String(avg_m, 3) + "," + String(avg_h, 4);
+  String Geiger_filename = "Geiger1.csv"; //create file title
+  GeigerFile = SD.open(Geiger_filename, FILE_WRITE); //open in write mode
+  String Geiger_header = "Running Time (s), Running Time (min), Running Time (hours), Counts, CPS, CPM, CPH";//header for data
+  String dataRow = String(sec, 2) + "," + String(min, 3) + "," + String(hour, 4) + "," + String(knt) + "," + String(avg_s, 2) + "," + String(avg_m, 3) + "," + String(avg_h, 4);//data rows
       
   if(GeigerFile){
-    if(title==1){
+    if(title==1){//print header only once
       GeigerFile.println(Geiger_header);
       title=2;
     }
-    GeigerFile.println(dataRow);
+    GeigerFile.println(dataRow);//print data and close file
     GeigerFile.close();
     Serial.print("Data written to:");
     Serial.println(Geiger_filename);
   }else{
     Serial.print("Error opening file: " + Geiger_filename);
   }
+  //serial print to show user functional running
   Serial.print("\nRunning time is "); Serial.print(sec,2); Serial.print(" seconds");
   Serial.print("\nRunning time in minutes is "); Serial.print(min,3); Serial.print(" minutes");
   Serial.print("\nRunning time in hours is "); Serial.print(hour,4); Serial.print(" hours");
@@ -103,6 +109,8 @@ void RecordGeigerData(){
   Serial.print("\nRunning average CPH is ");
   Serial.print(avg_h,4);
   Serial.print("\n");
+
+  //increase counters
   counter++;
   i++;
   // title++;
